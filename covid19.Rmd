@@ -1,0 +1,527 @@
+---
+title: "Covid19 Ananysis by AY Khalid"
+output: 
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    vertical_layout: fill
+---
+
+```{r setup, include=FALSE}
+library(flexdashboard)
+library(DT)
+library(ggplot2)
+pacman::p_load(dplyr, shiny, rio, httr, tidyr, lubridate, ggplot2, ggvis, GGally,
+               pacman, readr, rmarkdown, skimr, stringr, tidyverse, plotly, scales, flexdashboard, highcharter, gt, htmltools, viridis)
+```
+
+# Cases
+
+## Column {.tabset data-width="1000,"}
+
+### Yearly
+
+```{r}
+main_data2_an <- read.csv("main_data2.csv", row.names = "X") 
+  md2an_date = as.Date(main_data2_an$date) 
+  md2an_year <- as.numeric(format(md2an_date, "%Y"))
+  md2an_month <- (format(md2an_date, "%b")) 
+  main_data2_an <- cbind(main_data2_an, md2an_year, md2an_month)
+  main_data2_an <- main_data2_an[ , !duplicated(names(main_data2_an))]
+
+main_data2_an_year_grp <- main_data2_an %>%
+  select(md2an_year, Total_cases) %>%
+  group_by(md2an_year) %>%
+  summarize(Total_Case = sum(Total_cases))
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data2_an_year_grp$md2an_year, title = list(text = "Years")) %>%
+  hc_title(text = "Number of cases By Year") %>%
+   hc_yAxis(title = list(text = "Total Cases")) %>%
+    hc_add_series(
+    name = "Cases",
+    data = main_data2_an_year_grp$Total_Case,
+    color = "purple"
+  )
+
+```
+
+### Monthly
+
+```{r}
+
+month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") ## Create an order rule to ensure the months display in order of Jan to Dec
+
+main_data2_an$md2an_month <- factor(main_data2_an$md2an_month, levels = month_order)
+
+main_data2_an_month_grp <- main_data2_an %>%
+  select(md2an_month, Total_cases) %>%
+  group_by(md2an_month) %>%
+  summarize(Total_Cases = sum(Total_cases))
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data2_an_month_grp$md2an_month, title = list(text = "Months")) %>%
+  hc_title(text = "Number of cases By Month") %>%
+   hc_yAxis(title = list(text = "Number of cases")) %>%
+    hc_add_series(
+    name = "Cases",
+    data = main_data2_an_month_grp$Total_Cases,
+    color = "purple"
+  )
+
+
+
+
+```
+
+
+### By Country
+
+```{r}
+main_data3_an <- read.csv("main_data3.csv")
+
+md3an_ordering1 <- main_data3_an %>%
+  arrange(desc(Total_case))
+
+md3an_top10_case <- head(md3an_ordering1, 10)
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md3an_top10_case$location, title = list(text = "Countries")) %>%
+  hc_title(text = "Top 10 countries with the Highest number of Cases") %>%
+   hc_yAxis(title = list(text = "Number of cases")) %>%
+    hc_add_series(
+    name = "Cases",
+    data = md3an_top10_case$Total_case,
+    color = "purple"
+  )
+
+
+
+
+```
+
+
+### Rates to Population
+
+```{r}
+md3an_ordering2 <- main_data3_an %>% ## main_data3_an is the datasets of the queried total case for each country.
+  arrange(desc(percentage))
+
+
+md3an_top10_per <- head(md3an_ordering2, 10)
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md3an_top10_per$location, title = list(text = "Country")) %>%
+  hc_title(text = "Top 10 countries Percentage of Cases to Population") %>%
+   hc_yAxis(title = list(text = "Number of cases"),
+             labels = list(
+      formatter = JS("function() {
+        return Highcharts.numberFormat(this.value * 100, 0) + '%';}"))) %>% ## i browse for the formula to convert y-axis to percentage in highcharter.
+    hc_add_series(
+    name = "Rate-Case to Pop",
+    data = md3an_top10_per$percentage,
+    color = "purple"
+  )
+
+
+
+```
+
+
+### Continent
+
+```{r}
+main_data5_an <- read.csv("covid_main_data5.csv", row.names = "X") ## this represent the number of cases per countries
+
+
+## get rate of cases to population
+pop_case_rate_md5an <- main_data5_an[,3]/main_data5_an[,2]
+pop_to_case_rate <- pop_case_rate_md5an
+
+## get rate of deaths to population
+pop_death_rate_md5an <- main_data5_an[,4]/main_data5_an[,2]
+pop_to_death_rate <- pop_death_rate_md5an
+
+
+## join the rates to the continental table
+
+main_data5_an <- cbind(main_data5_an, pop_to_case_rate, pop_to_death_rate)
+
+
+## in descending
+
+main_data5_an1 <- main_data5_an %>%
+  arrange(desc(Total_case))
+## now it's time to plot graph for the continents
+
+## number of cases
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data5_an1$location, title = list(text = "Continent")) %>%
+  hc_title(text = "Number of Cases by Continent") %>%
+   hc_yAxis(title = list(text = "Number of cases")) %>%
+    hc_add_series(
+    name = "Cases",
+    data = main_data5_an1$Total_case,
+    color = "purple"
+  )
+
+```
+
+
+
+## Column {data-width="500"}
+
+### {.no-padding}
+
+```{r}
+ ## I  browse the code for creating gt table in flexdashboard, and also watching youtube videos for inspiration
+div(
+  style = 'height:500px; overflow-y:scroll', 
+  gt(md3an_ordering1) %>%
+    cols_hide(X) %>%  # Hide the first column
+    tab_header(title = md("Number and percentage of cases to population by country.")) %>%
+    tab_style(
+      style = list(
+        cell_borders(sides = 'bottom', weight = px(2)),
+        cell_text(weight = 'bold')
+      ),
+      location = cells_column_labels(columns = everything())
+    ) 
+)
+
+```
+
+
+# Deaths
+
+## Column {.tabset data-width="1000"}
+
+
+### Yearly
+
+
+```{r}
+
+main_data2_an_death <- as.data.frame(cbind(Years = main_data2_an$md2an_year, Total_death =main_data2_an$Total_deaths))
+write.csv(main_data2_an_death, "main_data2_death.csv") ## I have to export into another csv file, because the summation of the total deaths using select, group by and summarize function was return an NA value in each of the years.
+
+main_data2_death_an <- read.csv("main_data2_death.csv", row.names = "X") ## whenever I use row.names, the first rows created by default is converted to row names.
+
+
+main_data2_death_an_plot <- main_data2_death_an %>%     ## note that main_data is the name I use to represent the covide 19 datasets and every other data created from it follows the same pattern of name.
+  select(Years, Total_death) %>%
+  group_by(Years) %>%
+  summarize(Total_deaths = sum(Total_death, na.rm = T))
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data2_death_an_plot$Years, title = list(text = "Years")) %>%
+  hc_title(text = "Number of deaths By Year") %>%
+   hc_yAxis(title = list(text = "Total deaths")) %>%
+    hc_add_series(
+    name = "deaths",
+    data = main_data2_death_an_plot$Total_deaths,
+    color = "darkred"
+  )
+```
+
+### Monthly
+
+```{r}
+
+## taking the same step as taken on the death by years analysis
+
+
+main_data2_an_death_mth <- cbind(Months = as.character(main_data2_an$md2an_month), Total_death =main_data2_an$Total_deaths)
+write.csv(main_data2_an_death_mth, "main_data2_death_mth.csv") ## I have to export into another csv file, because the summation of the total deaths using select, group by and summarize function returns an NA value in each of the months.
+
+
+main_data2_death_mth_an <- read.csv("main_data2_death_mth.csv", row.names = "X") ## whenever I use row.names, the first rows created by default is converted to row names.
+
+
+
+month_order <- c("Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec") ## Create an order rule to ensure the months display in order of Jan to Dec
+
+main_data2_death_mth_an$Months <- factor(main_data2_death_mth_an$Months, levels = month_order) ## effecting the months order to the death in a month column
+
+
+
+main_data2_death_mth_an_plot <- main_data2_death_mth_an %>%     ## note that main_data is the name I use to represent the covide 19 datasets and every other data created from it follows the same pattern of name.
+  select(Months, Total_death) %>%
+  group_by(Months) %>%
+  summarize(Total_deaths = sum(Total_death, na.rm = T))
+
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data2_death_mth_an_plot$Months, title = list(text = "Months")) %>%
+  hc_title(text = "Number of deaths By Months") %>%
+   hc_yAxis(title = list(text = "Total deaths")) %>%
+    hc_add_series(
+    name = "deaths",
+    data = main_data2_death_mth_an_plot$Total_deaths,
+    color = "darkred"
+  )
+
+
+```
+
+
+### By Country
+
+```{r}
+main_data4_an <- read.csv("covid_main_data4.csv") ## this represent the number of deaths per countries
+
+md4an_ordering1 <- main_data4_an %>%
+  arrange(desc(Total_death))
+
+md4an_top10_case <- head(md4an_ordering1, 10)
+
+## plot the Top 10 countries with highest number of deaths
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md4an_top10_case$location, title = list(text = "Country")) %>%
+  hc_title(text = "Top 10 countries with the Highest number of Deaths") %>%
+   hc_yAxis(title = list(text = "Total deaths")) %>%
+    hc_add_series(
+    name = "Deaths",
+    data = md4an_top10_case$Total_death,
+    color = "darkred"
+  )
+
+
+```
+
+
+### Rates to Population
+
+```{r}
+## Top 10 countries with highest percentage number of cases relative to populations
+
+md4an_ordering2 <- main_data4_an %>% ## this code is use to create the chart
+  arrange(desc(percentage))
+
+md4an_top10_per <- head(md4an_ordering2, 10)
+
+md4an_ordering3 <- main_data4_an %>% ## this code is use to create the gt table
+  arrange(desc(Total_death))
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md4an_top10_per$location, title = list(text = "Country")) %>%
+  hc_title(text = "Top 10 countries Percentage of Deaths to Population") %>%
+   hc_yAxis(title = list(text = "Percentage of Deaths")) %>% ## I did not apply the percentage formatting on the y-axis of this chart, because the percentages are way too small.
+    hc_add_series(
+    name = "% Deaths",
+    data = md4an_top10_per$percentage,
+    color = "darkred"
+  )
+
+```
+
+
+### Continent
+
+```{r}
+## it seems ordering directly doesn't work in highcharter, therefore, I have to write separate statement to export a subset of the needed data for the analysis.
+
+main_data5_an2 <- cbind(location = main_data5_an$location, Total_death = main_data5_an$Total_death)
+
+write.csv(main_data5_an2, "main_data5_an2.csv") ## export the file
+
+## importing the file
+main_data5_an2_imp <- read.csv("main_data5_an2.csv", row.names = "X")
+
+
+main_data5_an2_ord <- main_data5_an2_imp %>%
+  arrange(desc(main_data5_an2_imp$Total_death))  ## ordering in descending order.
+
+
+
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = main_data5_an2_ord$location, title = list(text = "Continent")) %>%
+  hc_title(text = "Number of Deaths by Continent") %>%
+   hc_yAxis(title = list(text = "Total deaths")) %>%
+    hc_add_series(
+    name = "Deaths",
+    data = main_data5_an2_ord$Total_death,
+    color = "darkred"
+  )
+
+
+```
+
+
+
+
+## Column {data-width="500"}
+
+### {.no-padding}
+
+```{r}
+ ## I  browse the code for creating gt table in flexdashboard, and also watching youtube videos for inspiration
+div(
+  style = 'height:500px; overflow-y:scroll', 
+  gt(md4an_ordering3) %>%
+    cols_hide(X) %>%  # Hide the first column
+    tab_header(title = md("Number and percentage of deaths to population by country")) %>%
+    tab_style(
+      style = list(
+        cell_borders(sides = 'bottom', weight = px(2)),
+        cell_text(weight = 'bold')
+      ),
+      location = cells_column_labels(columns = everything())
+    ) 
+)
+
+```
+
+
+
+# Vaccinations
+
+## Column {.tabset data-width="1000"}
+
+### By Country
+
+```{r}
+main_data6_an <- read.csv("covid_main_data6.csv", row.names = "X")
+
+
+## Top 10 countries with the most vaccinations
+
+md6an_top10_vacc <- main_data6_an %>%
+  arrange(desc(Total_vaccinations))
+
+md6an_top10_vacc <- head(md6an_top10_vacc, 10)
+
+
+ highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md6an_top10_vacc$location, title = list(text = "Country")) %>%
+  hc_title(text = "Top 10 Countries With Most Vaccines Administered") %>%
+   hc_yAxis(title = list(text = "Number of Vaccines"),
+            labels = list(
+      formatter = JS("function() { return this.value / 1000000000 + 'B'; }"))) %>%   ## formating the y-axis to billions
+    hc_add_series(
+    name = "Vaccines",
+    data = md6an_top10_vacc$Total_vaccinations,
+    color = "darkgreen"
+  )
+ 
+ 
+```
+
+
+### Rates To Population
+
+```{r}
+## Rate of population to amount of vaccinations received by Top 10 countries
+
+per_cases_to_vac <- round(main_data6_an$Total_vaccinations/main_data6_an$Population,2)
+
+md6an_vac_cases <- cbind(main_data6_an, per_cases_to_vac) %>%
+  arrange(desc(per_cases_to_vac))
+
+
+md6an_vac_cases <- head(md6an_vac_cases, 10)
+
+highchart() %>%
+  hc_chart(type = "column") %>%
+  hc_xAxis(categories = md6an_vac_cases$location, title = list(text = "Country")) %>%
+  hc_title(text = "Top 10 Countries Rate of Vaccines administered To Population") %>%
+   hc_yAxis(title = list(text = "Rates"),
+             labels = list(
+      formatter = JS("function() {
+        return Highcharts.numberFormat(this.value * 100, 0) + '%';}"))) %>% ## i browse for the formula to convert y-axis to percentage in highcharter.
+    hc_add_series(
+    name = "Rate-Vacc. to Pop",
+    data = md6an_vac_cases$per_cases_to_vac,
+    color = "darkgreen"
+  )
+
+```
+
+
+
+## Column {data-width="500"}
+
+### {.no-padding}
+
+```{r}
+## preparing the data
+
+main_data6_an_table <- cbind(main_data6_an, percentage = round(main_data6_an$Total_vaccinations/main_data6_an$Population,2)) %>%
+  arrange(desc(Total_vaccinations))
+
+
+ ## I  browse the code for creating gt table in flexdashboard, and also watching youtube videos for inspiration
+div(
+  style = 'height:500px; overflow-y:scroll', 
+  gt(main_data6_an_table) %>%
+    tab_header(title = md("Number and percentage of Vaccines to population by country")) %>%
+    tab_style(
+      style = list(
+        cell_borders(sides = 'bottom', weight = px(2)),
+        cell_text(weight = 'bold')
+      ),
+      location = cells_column_labels(columns = everything())
+    ) 
+)
+
+```
+
+
+
+
+
+
+# About
+
+## culumn{.tabset data-width="1000"}
+
+### About this Project
+
+#### This project is last updated on 2/11/2023
+
+#### charts with purple color represent number of cases.
+#### charts with red color represent number of death.
+#### charts with green color reresent number vaccines administered.
+#### The analysis follow a pattern of naming data. For instance, the source data is name as: "main_data". And such is the same pattern followed throughout the analysis. For instance "main_data2_death_an_plot", is the plottable data relating to the number of deaths.
+#### The analysis have 3 major sections of, Cases, Deaths and Vaccinations. Each of this sections have sub-sections of Yearly, Monthly, By country, Rates to Population and Continent, except for Vaccinations which only have two sub-section of By Country and Rates to Population.
+#### The project seek to analyze the Covid19 pandemic between 2020 (the beginning) and 2023. Some of the guided questions are:
+##### 1. Which country record the highest number of cases? 
+##### 2. Which country record the highest number of deaths?
+##### 3. Which country have the highest amount of Vaccines administered?
+##### 4. Which country have the highest rate of cases, deaths and vaccines compare to it population?
+##### 5. Which month and year have the highest record of cases and deaths?
+#### Most of the data cleaning and manipulation are done in R script stored with the name "my_covid19_analysis.R". Thereafter, the needed files exported for further analysis in Rmarkdown flexdashboard. 
+#### ggplot2 library was used to create visuals in R script while highcharter library was used to create visuals in the Rmarkdown flexdashboard.
+
+#### Here is a link to the dataset: https://ourworldindata.org/covid-deaths
+
+### About Me
+
+#### I am AY Khalid. 
+#### Here is a link to my portfolio: https://sites.google.com/view/aykhalid
+#### Thank You!
+
